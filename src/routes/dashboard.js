@@ -17,7 +17,7 @@ dashboardRoutes.get("/dashboard", async (req, res) => {
     where: { memberId: member.id },
     include: {
       deploys: {
-        orderBy: { createdAt: "desc" },
+        orderBy: { id: "desc" },
         take: 1,
       },
     },

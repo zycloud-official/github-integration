@@ -9,6 +9,7 @@ ENV DATABASE_URL=${DATABASE_URL}
 
 WORKDIR /app
 ENV NODE_ENV production
+ENV PORT 80
 
 COPY package.json ./
 COPY prisma ./prisma
@@ -20,5 +21,5 @@ COPY . .
 RUN mkdir -p data
 RUN chmod +x scripts/start.sh
 
-EXPOSE 3000
+EXPOSE 80
 CMD ["./scripts/start.sh"]

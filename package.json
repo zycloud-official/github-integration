@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "dev:db:generate": "prisma generate --schema=prisma/schema.dev.prisma",
     "dev:db:push": "prisma db push --schema=prisma/schema.dev.prisma",
     "dev:db:studio": "prisma studio --schema=prisma/schema.dev.prisma",
@@ -25,5 +28,10 @@
     "express": "^5.0.0",
     "prisma": "^6.0.0",
     "tar": "^7.4.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.0.0",
+    "supertest": "^7.0.0",
+    "vitest": "^3.0.0"
   }
 }

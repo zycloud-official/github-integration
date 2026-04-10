@@ -9,7 +9,7 @@ import {
 import { constants } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import tar from "tar";
+import * as tar from "tar";
 import { downloadTarball } from "./github.js";
 import { detectFramework } from "./detect.js";
 import { appExists, createApp, uploadTarball, enableSsl } from "./caprover.js";

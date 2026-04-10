@@ -1,0 +1,9 @@
+import { prisma } from "../src/db.js";
+
+// Call at the start of beforeEach in any test file that writes to the DB.
+export async function cleanDb() {
+  await prisma.deploy.deleteMany();
+  await prisma.app.deleteMany();
+  await prisma.installation.deleteMany();
+  await prisma.member.deleteMany();
+}
