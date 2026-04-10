@@ -1,0 +1,61 @@
+// Development schema — SQLite
+// Used locally via: npm run dev:db:push
+// For production (PostgreSQL), use prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id             Int            @id @default(autoincrement())
+  githubUserId   Int            @unique @map("github_user_id")
+  githubUsername String         @map("github_username")
+  avatarUrl      String?        @map("avatar_url")
+  sessionToken   String?        @map("session_token")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  installations  Installation[]
+  apps           App[]
+
+  @@map("members")
+}
+
+model Installation {
+  id                   Int      @id @default(autoincrement())
+  githubInstallationId Int      @unique @map("github_installation_id")
+  githubUsername       String   @map("github_username")
+  memberId             Int?     @map("member_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+  member               Member?  @relation(fields: [memberId], references: [id])
+
+  @@map("installations")
+}
+
+model App {
+  id              Int      @id @default(autoincrement())
+  memberId        Int?     @map("member_id")
+  githubRepo      String   @unique @map("github_repo")
+  caproverAppName String   @map("caprover_app_name")
+  previewUrl      String?  @map("preview_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  member          Member?  @relation(fields: [memberId], references: [id])
+  deploys         Deploy[]
+
+  @@map("apps")
+}
+
+model Deploy {
+  id        Int      @id @default(autoincrement())
+  appId     Int      @map("app_id")
+  commitSha String?  @map("commit_sha")
+  status    String   @default("queued")
+  log       String?
+  createdAt DateTime @default(now()) @map("created_at")
+  app       App      @relation(fields: [appId], references: [id])
+
+  @@map("deploys")
+}
