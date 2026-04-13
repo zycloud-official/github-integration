@@ -4,6 +4,8 @@ A Netlify-style deployment platform for yangfrenz.club members, powered by a Git
 
 Deployed at `github-integration.zycloud.space` on the **zycloud** CapRover instance. Member apps are served at `https://{owner}-{repo}.zycloud.space`.
 
+**Package manager: yarn** — use `yarn` for all installs and script runs. Do not use `npm` or `npx`; use `yarn` equivalents instead.
+
 ---
 
 ## File map
@@ -29,13 +31,13 @@ Deployed at `github-integration.zycloud.space` on the **zycloud** CapRover insta
 
 ```bash
 cp .env.example .env
-npm install
-npm run dev:db:generate   # generate Prisma client from SQLite schema
-npm run dev:db:push       # create/sync local DB
-npm run dev
+yarn install
+yarn dev:db:generate   # generate Prisma client from SQLite schema
+yarn dev:db:push       # create/sync local DB
+yarn dev
 ```
 
-Use `npm run dev:db:studio` to browse the DB. Use smee.io or ngrok to receive webhooks locally.
+Use `yarn dev:db:studio` to browse the DB. Use smee.io or ngrok to receive webhooks locally.
 
 ---
 
@@ -67,6 +69,8 @@ Use `npm run dev:db:studio` to browse the DB. Use smee.io or ngrok to receive we
 4. Enable HTTPS
 
 Subsequent deploys: `caprover deploy` CLI, or wire this repo through its own webhook to self-deploy.
+
+> **Note:** `yarn.lock` must be committed before deploying — the Dockerfile uses `--frozen-lockfile`. Run `yarn install` locally to generate it.
 
 ---
 

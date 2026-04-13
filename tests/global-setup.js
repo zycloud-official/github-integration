@@ -12,7 +12,7 @@ export async function setup() {
   await rm("./data/test.db-shm", { force: true });
   await rm("./data/test.db-wal", { force: true });
 
-  execSync("npx prisma db push --schema=prisma/schema.dev.prisma", {
+  execSync("yarn prisma db push --schema=prisma/schema.dev.prisma", {
     env: { ...process.env, DATABASE_URL: "file:./data/test.db" },
     stdio: "inherit",
   });

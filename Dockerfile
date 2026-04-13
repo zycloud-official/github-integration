@@ -1,7 +1,5 @@
 FROM node:20-alpine
 
-# Both vars must be present at build time for `prisma generate`.
-# Defaults are placeholders — real values come from CapRover env vars at runtime.
 ARG DATABASE_PROVIDER="postgres"
 ENV DATABASE_PROVIDER=${DATABASE_PROVIDER}
 ARG DATABASE_URL="postgresql://postgres:postgres@localhost:5432/zycloud"
@@ -11,11 +9,11 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV PORT 80
 
-COPY package.json ./
+COPY package.json yarn.lock ./
 COPY prisma ./prisma
 
-RUN npm install
-RUN npx prisma generate
+RUN yarn install --production --frozen-lockfile
+RUN yarn prisma generate
 
 COPY . .
 RUN mkdir -p data
