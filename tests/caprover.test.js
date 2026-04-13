@@ -26,23 +26,35 @@ beforeEach(async () => {
   caprover = await import("../src/caprover.js");
 });
 
-describe("appExists", () => {
-  it("returns false when app list is empty", async () => {
+describe("getAppDefinition", () => {
+  it("returns null when app list is empty", async () => {
     fetchMock
       .mockResolvedValueOnce(mockLoginResponse())
       .mockResolvedValueOnce(mockApiResponse({ appDefinitions: [] }));
 
-    expect(await caprover.appExists("myapp")).toBe(false);
+    expect(await caprover.getAppDefinition("myapp")).toBeNull();
   });
 
-  it("returns true when app is in the list", async () => {
+  it("returns the full app object when found", async () => {
+    const appDef = { appName: "myapp", hasDefaultSubDomainSsl: false };
     fetchMock
       .mockResolvedValueOnce(mockLoginResponse())
       .mockResolvedValueOnce(
-        mockApiResponse({ appDefinitions: [{ appName: "myapp" }, { appName: "other" }] })
+        mockApiResponse({ appDefinitions: [appDef, { appName: "other" }] })
       );
 
-    expect(await caprover.appExists("myapp")).toBe(true);
+    const result = await caprover.getAppDefinition("myapp");
+    expect(result).toEqual(appDef);
+  });
+
+  it("returns the ssl status on the definition", async () => {
+    const appDef = { appName: "myapp", hasDefaultSubDomainSsl: true };
+    fetchMock
+      .mockResolvedValueOnce(mockLoginResponse())
+      .mockResolvedValueOnce(mockApiResponse({ appDefinitions: [appDef] }));
+
+    const result = await caprover.getAppDefinition("myapp");
+    expect(result?.hasDefaultSubDomainSsl).toBe(true);
   });
 });
 
@@ -56,8 +68,8 @@ describe("token caching", () => {
       .mockResolvedValueOnce(mockLoginResponse("cached-token"))
       .mockResolvedValue(mockApiResponse({ appDefinitions: [] }));
 
-    await caprover.appExists("app1");
-    await caprover.appExists("app2");
+    await caprover.getAppDefinition("app1");
+    await caprover.getAppDefinition("app2");
 
     const loginCalls = fetchMock.mock.calls.filter((c) =>
       c[0].includes("/api/v2/login")
@@ -74,9 +86,9 @@ describe("token caching", () => {
       .mockResolvedValueOnce(mockLoginResponse("token-2"))
       .mockResolvedValueOnce(mockApiResponse({ appDefinitions: [] }));
 
-    await caprover.appExists("app1");
+    await caprover.getAppDefinition("app1");
     vi.advanceTimersByTime(51 * 60 * 1000); // advance 51 minutes
-    await caprover.appExists("app2");
+    await caprover.getAppDefinition("app2");
 
     const loginCalls = fetchMock.mock.calls.filter((c) =>
       c[0].includes("/api/v2/login")
@@ -96,7 +108,8 @@ describe("uploadTarball", () => {
     await caprover.uploadTarball("myapp", Buffer.from("fake-tarball"));
 
     const [url, opts] = fetchMock.mock.calls[1];
-    expect(url).toContain("appName=myapp");
+    expect(url).toContain("/user/apps/appData/myapp");
+    expect(url).toContain("detached=1");
     expect(opts.method).toBe("POST");
     expect(opts.headers["x-captain-auth"]).toBe("captain-token");
     expect(opts.body).toBeInstanceOf(FormData);
@@ -112,7 +125,7 @@ describe("createApp", () => {
     await caprover.createApp("alice-myrepo");
 
     const [url, opts] = fetchMock.mock.calls[1];
-    expect(url).toContain("/user/apps/appDefinitions");
+    expect(url).toContain("/user/apps/appDefinitions/register");
     expect(JSON.parse(opts.body).appName).toBe("alice-myrepo");
   });
 });

@@ -46,14 +46,19 @@ function viteDef() {
   return {
     schemaVersion: 2,
     dockerfileLines: [
-      "FROM node:20-alpine AS builder",
+      // node:20-alpine (musl) causes esbuild to produce a non-extensible module
+      // object that breaks Vite's config loader. Use Debian slim instead.
+      "FROM node:lts-slim AS builder",
       "WORKDIR /app",
       "COPY package*.json ./",
-      "RUN npm ci",
+      "RUN npm install",          // npm ci requires package-lock.json; install works with any lock file or none
       "COPY . .",
       "RUN npm run build",
       "FROM nginx:alpine",
       "COPY --from=builder /app/dist /usr/share/nginx/html",
+      // Single-quoted string keeps $uri literal (no shell expansion). Overwrites nginx default
+      // with SPA-friendly config so client-side routing works on any path.
+      "RUN echo 'server{listen 80;root /usr/share/nginx/html;index index.html;location /{try_files $uri $uri/ /index.html;}}' > /etc/nginx/conf.d/default.conf",
       "EXPOSE 80",
     ],
   };
@@ -63,10 +68,10 @@ function nextjsDef() {
   return {
     schemaVersion: 2,
     dockerfileLines: [
-      "FROM node:20-alpine",
+      "FROM node:lts-slim",
       "WORKDIR /app",
       "COPY package*.json ./",
-      "RUN npm ci",
+      "RUN npm install",
       "COPY . .",
       "RUN npm run build",
       "EXPOSE 3000",
@@ -79,7 +84,7 @@ function nodeDef() {
   return {
     schemaVersion: 2,
     dockerfileLines: [
-      "FROM node:20-alpine",
+      "FROM node:lts-slim",
       "WORKDIR /app",
       "COPY package*.json ./",
       "RUN npm ci --omit=dev",

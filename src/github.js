@@ -11,14 +11,13 @@ export const githubApp = new App({
 });
 
 export async function downloadTarball(owner, repo, sha, installationId) {
+  console.log(`[github] Getting installation token (installationId: ${installationId})`);
   const octokit = await githubApp.getInstallationOctokit(installationId);
-  const { token } = await octokit.auth({
-    type: "installation",
-    installationId,
-  });
+  const { token } = await octokit.auth({ type: "installation", installationId });
 
-  // GitHub returns a redirect to a signed S3 URL
   const url = `https://api.github.com/repos/${owner}/${repo}/tarball/${sha}`;
+  console.log(`[github] Downloading tarball: ${url}`);
+
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -28,5 +27,8 @@ export async function downloadTarball(owner, repo, sha, installationId) {
   });
   if (!res.ok)
     throw new Error(`Tarball download failed: ${res.status} ${res.statusText}`);
-  return Buffer.from(await res.arrayBuffer());
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+  console.log(`[github] Tarball downloaded: ${(buffer.length / 1024).toFixed(1)} KB`);
+  return buffer;
 }

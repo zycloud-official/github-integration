@@ -24,7 +24,10 @@ webhookRoutes.post("/webhook", async (req, res) => {
   }
 
   const event = req.headers["x-github-event"];
+  const delivery = req.headers["x-github-delivery"] ?? "unknown";
   const payload = req.body;
+
+  console.log(`[webhook] ${event} (delivery: ${delivery})`);
 
   switch (event) {
     case "push":
@@ -37,7 +40,7 @@ webhookRoutes.post("/webhook", async (req, res) => {
       handleInstallationRepos(payload);
       break;
     default:
-      console.debug("Unhandled webhook event:", event);
+      console.log(`[webhook] Unhandled event: ${event}`);
   }
 
   res.json({ ok: true });
@@ -46,9 +49,12 @@ webhookRoutes.post("/webhook", async (req, res) => {
 async function handlePush(payload) {
   const { repository, installation, ref, after: sha } = payload;
 
-  if (!installation) return;
+  if (!installation) {
+    console.log("[webhook] Push has no installation context — ignoring");
+    return;
+  }
   if (ref !== `refs/heads/${repository.default_branch}`) {
-    console.log(`Skipping non-default branch push: ${ref}`);
+    console.log(`[webhook] Skipping non-default branch: ${ref}`);
     return;
   }
 
@@ -56,6 +62,7 @@ async function handlePush(payload) {
   const repo = repository.name.toLowerCase();
   const appName = `${owner}-${repo}`.replace(/[^a-z0-9-]/g, "-");
   const installationId = installation.id;
+  console.log(`[webhook] Push to ${owner}/${repo} @ ${sha.slice(0, 7)} → app: ${appName}`);
 
   const app = await prisma.app.upsert({
     where: { githubRepo: `${owner}/${repo}` },
@@ -71,7 +78,7 @@ async function handlePush(payload) {
     data: { appId: app.id, commitSha: sha, status: "queued" },
   });
 
-  console.log(`Deploy queued: ${appName} @ ${sha.slice(0, 7)}`);
+  console.log(`[webhook] Deploy #${deploy.id} queued for ${appName}`);
 
   // Fire-and-forget — respond to GitHub quickly, deploy runs in background
   deployApp({
@@ -83,8 +90,8 @@ async function handlePush(payload) {
     appId: app.id,
     deployId: deploy.id,
   })
-    .then(() => console.log(`Deploy succeeded: ${appName}`))
-    .catch((err) => console.error(`Deploy failed: ${appName}`, err));
+    .then(() => console.log(`[webhook] Deploy #${deploy.id} succeeded: ${appName}`))
+    .catch((error) => console.error(`[webhook] Deploy #${deploy.id} failed: ${appName} —`, error.message));
 }
 
 async function handleInstallation(payload) {
@@ -104,19 +111,19 @@ async function handleInstallation(payload) {
       },
       update: {},
     });
-    console.log(`App installed by: ${username}`);
+    console.log(`[webhook] App installed by: ${username}`);
   } else if (action === "deleted") {
     await prisma.installation.deleteMany({
       where: { githubInstallationId: installation.id },
     });
-    console.log(`App uninstalled by: ${username}`);
+    console.log(`[webhook] App uninstalled by: ${username}`);
   }
 }
 
 function handleInstallationRepos(payload) {
   console.log(
-    `Installation repos changed: action=${payload.action} added=${
-      payload.repositories_added?.length ?? 0
-    } removed=${payload.repositories_removed?.length ?? 0}`
+    `[webhook] Installation repos changed: action=${payload.action} ` +
+    `added=${payload.repositories_added?.length ?? 0} ` +
+    `removed=${payload.repositories_removed?.length ?? 0}`
   );
 }

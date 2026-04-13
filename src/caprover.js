@@ -1,4 +1,4 @@
-const BASE = process.env.CAPROVER_URL; // e.g. https://captain.zycloud.space
+const BASE = process.env.CAPROVER_URL;
 const PASSWORD = process.env.CAPROVER_PASSWORD;
 
 let cachedToken = null;
@@ -7,6 +7,7 @@ let tokenExpiry = 0;
 async function getToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
+  console.log("[caprover] Authenticating...");
   const res = await fetch(`${BASE}/api/v2/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-namespace": "captain" },
@@ -15,7 +16,8 @@ async function getToken() {
   if (!res.ok) throw new Error(`CapRover login failed: ${res.status}`);
   const { data } = await res.json();
   cachedToken = data.token;
-  tokenExpiry = Date.now() + 50 * 60 * 1000; // 50 min (tokens last ~1 hr)
+  tokenExpiry = Date.now() + 50 * 60 * 1000;
+  console.log("[caprover] Authenticated (token cached for 50 min)");
   return cachedToken;
 }
 
@@ -34,22 +36,25 @@ async function api(method, path, body) {
   return res.json();
 }
 
-export async function appExists(appName) {
+// Returns the full CapRover app definition, or null if the app doesn't exist.
+// Callers can inspect .hasDefaultSubDomainSsl to check SSL status.
+export async function getAppDefinition(appName) {
+  console.log(`[caprover] Fetching app definition: ${appName}`);
   const { data } = await api("GET", "/user/apps/appDefinitions");
-  return data.appDefinitions.some((a) => a.appName === appName);
+  const app = data.appDefinitions.find((a) => a.appName === appName) ?? null;
+  console.log(`[caprover] App ${appName}: ${app ? `exists (ssl=${app.hasDefaultSubDomainSsl})` : "not found"}`);
+  return app;
 }
 
 export async function createApp(appName) {
-  await api("POST", "/user/apps/appDefinitions", {
-    appName,
-    hasPersistentData: false,
-  });
+  console.log(`[caprover] Creating app: ${appName}`);
+  await api("POST", "/user/apps/appDefinitions/register", { appName, hasPersistentData: false });
+  console.log(`[caprover] App created: ${appName}`);
 }
 
 export async function enableSsl(appName) {
-  await api("POST", "/user/apps/appDefinitions/enablebasedomainssl", {
-    appName,
-  });
+  console.log(`[caprover] Enabling SSL for: ${appName}`);
+  await api("POST", "/user/apps/appDefinitions/enablebasedomainssl", { appName });
   await api("POST", "/user/apps/appDefinitions/update", {
     appName,
     forceSsl: true,
@@ -58,9 +63,11 @@ export async function enableSsl(appName) {
     notExposeAsWebApp: false,
     description: "",
   });
+  console.log(`[caprover] SSL enabled for: ${appName}`);
 }
 
 export async function uploadTarball(appName, tarballBuffer) {
+  console.log(`[caprover] Uploading ${(tarballBuffer.length / 1024).toFixed(1)} KB tarball for: ${appName}`);
   const token = await getToken();
   const form = new FormData();
   form.append(
@@ -70,7 +77,7 @@ export async function uploadTarball(appName, tarballBuffer) {
   );
 
   const res = await fetch(
-    `${BASE}/api/v2/user/apps/appDefinitions/upload?appName=${appName}`,
+    `${BASE}/api/v2/user/apps/appData/${appName}?detached=1`,
     {
       method: "POST",
       headers: { "x-namespace": "captain", "x-captain-auth": token },
@@ -78,5 +85,7 @@ export async function uploadTarball(appName, tarballBuffer) {
     }
   );
   if (!res.ok) throw new Error(`CapRover upload failed: ${res.status}`);
-  return res.json();
+  const result = await res.json();
+  console.log(`[caprover] Upload accepted for: ${appName}`);
+  return result;
 }

@@ -12,7 +12,7 @@ vi.mock("../src/github.js", () => ({
 }));
 
 vi.mock("../src/caprover.js", () => ({
-  appExists: vi.fn(),
+  getAppDefinition: vi.fn(),
   createApp: vi.fn().mockResolvedValue(undefined),
   uploadTarball: vi.fn().mockResolvedValue({}),
   enableSsl: vi.fn().mockResolvedValue(undefined),
@@ -20,7 +20,7 @@ vi.mock("../src/caprover.js", () => ({
 
 const { deployApp } = await import("../src/deploy.js");
 const { downloadTarball } = await import("../src/github.js");
-const { appExists, createApp, uploadTarball, enableSsl } = await import("../src/caprover.js");
+const { getAppDefinition, createApp, uploadTarball, enableSsl } = await import("../src/caprover.js");
 
 // Creates a minimal .tar.gz mimicking GitHub's tarball format
 // (files nested inside a top-level "owner-repo-sha/" directory).
@@ -69,7 +69,7 @@ describe("deployApp — CapRover app lifecycle", () => {
     vi.clearAllMocks();
     const params = await seed();
     downloadTarball.mockResolvedValue(await makeTarball({ "index.html": "<html/>" }));
-    appExists.mockResolvedValue(false);
+    getAppDefinition.mockResolvedValue(null); // app doesn't exist yet
 
     await deployApp(params);
 
@@ -77,12 +77,25 @@ describe("deployApp — CapRover app lifecycle", () => {
     expect(enableSsl).toHaveBeenCalledWith("alice-testrepo");
   });
 
-  it("skips createApp and enableSsl on subsequent deploys", async () => {
+  it("enables SSL on existing app where SSL was never set up", async () => {
     await cleanDb();
     vi.clearAllMocks();
     const params = await seed();
     downloadTarball.mockResolvedValue(await makeTarball({ "index.html": "<html/>" }));
-    appExists.mockResolvedValue(true);
+    getAppDefinition.mockResolvedValue({ appName: "alice-testrepo", hasDefaultSubDomainSsl: false });
+
+    await deployApp(params);
+
+    expect(createApp).not.toHaveBeenCalled(); // app already exists
+    expect(enableSsl).toHaveBeenCalledWith("alice-testrepo"); // SSL still applied
+  });
+
+  it("skips createApp and enableSsl when app already has SSL", async () => {
+    await cleanDb();
+    vi.clearAllMocks();
+    const params = await seed();
+    downloadTarball.mockResolvedValue(await makeTarball({ "index.html": "<html/>" }));
+    getAppDefinition.mockResolvedValue({ appName: "alice-testrepo", hasDefaultSubDomainSsl: true });
 
     await deployApp(params);
 
@@ -99,7 +112,7 @@ describe("deployApp — captain-definition injection", () => {
     downloadTarball.mockResolvedValue(
       await makeTarball({ "package.json": JSON.stringify({ dependencies: { vite: "^5.0.0" } }) })
     );
-    appExists.mockResolvedValue(true);
+    getAppDefinition.mockResolvedValue({ appName: "alice-testrepo", hasDefaultSubDomainSsl: true });
 
     await deployApp(params);
 
@@ -114,7 +127,7 @@ describe("deployApp — captain-definition injection", () => {
     const params = await seed();
     const existingDef = JSON.stringify({ schemaVersion: 2, dockerfileLines: ["FROM nginx"] });
     downloadTarball.mockResolvedValue(await makeTarball({ "captain-definition": existingDef }));
-    appExists.mockResolvedValue(true);
+    getAppDefinition.mockResolvedValue({ appName: "alice-testrepo", hasDefaultSubDomainSsl: true });
 
     await deployApp(params);
 
@@ -128,7 +141,7 @@ describe("deployApp — deploy status", () => {
     vi.clearAllMocks();
     const params = await seed();
     downloadTarball.mockResolvedValue(await makeTarball({ "index.html": "<html/>" }));
-    appExists.mockResolvedValue(true);
+    getAppDefinition.mockResolvedValue({ appName: "alice-testrepo", hasDefaultSubDomainSsl: true });
 
     await deployApp(params);
 
