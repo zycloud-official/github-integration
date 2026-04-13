@@ -17,8 +17,11 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio"
   },
+  "license": "MIT",
+  "author": "Yang Lin",
   "engines": {
-    "node": ">=20"
+    "node": ">=20",
+    "yarn": ">=1"
   },
   "dependencies": {
     "@octokit/app": "^15.1.0",
