@@ -74,9 +74,40 @@ Subsequent deploys: `caprover deploy` CLI, or wire this repo through its own web
 
 ---
 
+## Architecture Vision
+
+This project will evolve into **core** — the central backend for the entire zycloud PaaS stack.
+
+### Responsibilities of core
+
+- **Shared auth** — single account system for all zycloud services (dashboard, monitors, integrations). Users authenticate once; third-party connections (GitHub, GitLab, etc.) are linked to their zycloud account.
+- **Deployment orchestration** — deployment runners, CapRover API calls, build logs, status tracking.
+- **Data layer** — all PaaS-related data: accounts, connected integrations, apps, deploy history.
+- **REST API** — exposes endpoints consumed by separate frontend apps (dashboard, monitors) and other integrations.
+
+### Auth design
+
+- Core is the auth authority for the zycloud stack — issues and validates sessions/tokens.
+- Third-party OAuth flows (GitHub, GitLab) use a `state` parameter tied to the authenticated zycloud session to prevent CSRF account-linking attacks.
+- GitHub/GitLab OAuth tokens stored in core, scoped to the owning account.
+
+### Module boundaries
+
+| Module | Owns |
+|--------|------|
+| `src/routes/auth.js` | Zycloud account login/logout/session |
+| `src/integrations/github/` | GitHub App, OAuth, webhook handling — no deploy logic |
+| `src/deploy.js` | Provider-agnostic deploy pipeline |
+| `src/caprover.js` | CapRover API — no integration-specific concepts |
+| `src/routes/api/` | REST endpoints for dashboard and other frontend apps |
+
+---
+
 ## Roadmap
 
-- [ ] Web dashboard UI (currently `/dashboard` returns JSON)
+- [ ] Shared zycloud account system (replaces GitHub-only Member model)
+- [ ] GitHub integration linked to zycloud account (not standalone)
+- [ ] REST API for separate dashboard and monitor frontend apps
 - [ ] Build logs streamed to dashboard
 - [ ] Branch previews (not just default branch)
 - [ ] Delete CapRover app when repo is disconnected

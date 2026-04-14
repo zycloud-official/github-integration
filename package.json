@@ -1,7 +1,7 @@
 {
-  "name": "github-integration",
-  "version": "1.0.0",
-  "description": "GitHub App webhook server at github-integration.zycloud.space — auto-deploys member repos to CapRover",
+  "name": "@zycloud-official/core",
+  "version": "0.1.0",
+  "description": "The core services for the whole zycloud plaftform",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
